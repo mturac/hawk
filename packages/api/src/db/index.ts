@@ -113,9 +113,11 @@ export function closeDb() {
   }
 }
 
-export function queryAll(db: Database, sql: string, params: unknown[] = []): Record<string, unknown>[] {
+export type SqlParam = string | number | null | undefined;
+
+export function queryAll(db: Database, sql: string, params: SqlParam[] = []): Record<string, unknown>[] {
   const stmt = db.prepare(sql);
-  stmt.bind(params as any[]);
+  stmt.bind(params);
   const rows: Record<string, unknown>[] = [];
   while (stmt.step()) {
     rows.push(stmt.getAsObject());
@@ -124,16 +126,16 @@ export function queryAll(db: Database, sql: string, params: unknown[] = []): Rec
   return rows;
 }
 
-export function queryOne(db: Database, sql: string, params: unknown[] = []): Record<string, unknown> | undefined {
+export function queryOne(db: Database, sql: string, params: SqlParam[] = []): Record<string, unknown> | undefined {
   return queryAll(db, sql, params)[0];
 }
 
-export function runSql(db: Database, sql: string, params: unknown[] = []): { lastInsertRowid: number; changes: number } {
-  db.run(sql, params as any[]);
-  const lastId = queryOne(db, 'SELECT last_insert_rowid() as id') as any;
-  const changes = queryOne(db, 'SELECT changes() as c') as any;
+export function runSql(db: Database, sql: string, params: SqlParam[] = []): { lastInsertRowid: number; changes: number } {
+  db.run(sql, params);
+  const lastId = queryOne(db, 'SELECT last_insert_rowid() as id');
+  const changes = queryOne(db, 'SELECT changes() as c');
   return {
-    lastInsertRowid: lastId?.id ?? 0,
-    changes: changes?.c ?? 0,
+    lastInsertRowid: (lastId?.id as number) ?? 0,
+    changes: (changes?.c as number) ?? 0,
   };
 }

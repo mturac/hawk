@@ -4,7 +4,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   const authToken = process.env.HAWK_AUTH_TOKEN;
 
   if (!authToken) {
-    return next();
+    if (req.path === '/api/health') {
+      return next();
+    }
+    console.error('[AUTH] HAWK_AUTH_TOKEN not set — access denied');
+    return res.status(500).json({ error: 'Server misconfiguration: HAWK_AUTH_TOKEN not set' });
   }
 
   if (req.path === '/api/health') {

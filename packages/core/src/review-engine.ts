@@ -1,6 +1,6 @@
 import { truncateDiff } from './diff-parser';
 import { callLLM } from './llm/index';
-import { ReviewConfig, ReviewResult, ReviewComment, PRContext, DiffFile, FileScore } from './types';
+import { ReviewConfig, ReviewResult, ReviewComment, RawReviewComment, PRContext, DiffFile, FileScore } from './types';
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   quick: `You are Hawk, a fast code reviewer. Focus ONLY on critical issues:
@@ -110,7 +110,7 @@ export async function reviewPR(
     score: calculateScore(allComments),
     issuesFound: allComments.length,
     prDescription: await generatePRDescription(context, config),
-    fileScores: calculateFileScores(allComments, context.files),
+    fileScores: calculateFileScores(allComments, filesToReview),
   };
 }
 
@@ -148,7 +148,7 @@ ${diffs}`;
   }
 }
 
-function parseReviewComments(raw: string): ReviewComment[] {
+export function parseReviewComments(raw: string): ReviewComment[] {
   const jsonMatch = raw.match(/\[[\s\S]*\]/);
   if (!jsonMatch) return [];
 
@@ -156,27 +156,30 @@ function parseReviewComments(raw: string): ReviewComment[] {
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.filter(isValidComment).map((c: any) => ({
-      file: c.file,
-      line: c.line,
-      severity: c.severity,
-      category: c.category,
-      message: c.message,
-      suggestion: c.suggestion,
+    return parsed.filter(isValidComment).map((c: RawReviewComment) => ({
+      file: c.file as string,
+      line: c.line as number,
+      severity: c.severity as ReviewComment['severity'],
+      category: c.category as ReviewComment['category'],
+      message: c.message as string,
+      suggestion: c.suggestion as string | undefined,
     }));
   } catch {
     return [];
   }
 }
 
-function isValidComment(c: any): boolean {
+export function isValidComment(c: unknown): c is RawReviewComment {
+  if (typeof c !== 'object' || c === null) return false;
+  const r = c as Record<string, unknown>;
   return (
-    typeof c === 'object' &&
-    typeof c.file === 'string' &&
-    typeof c.line === 'number' &&
-    ['error', 'warning', 'info', 'suggestion'].includes(c.severity) &&
-    ['security', 'bug', 'style', 'performance', 'test', 'documentation'].includes(c.category) &&
-    typeof c.message === 'string'
+    typeof r.file === 'string' &&
+    typeof r.line === 'number' &&
+    typeof r.severity === 'string' &&
+    ['error', 'warning', 'info', 'suggestion'].includes(r.severity) &&
+    typeof r.category === 'string' &&
+    ['security', 'bug', 'style', 'performance', 'test', 'documentation'].includes(r.category) &&
+    typeof r.message === 'string'
   );
 }
 
@@ -266,7 +269,7 @@ function matchesGlob(filePath: string, pattern: string): boolean {
   return filePath === pattern || filePath.endsWith('/' + pattern);
 }
 
-function calculateScore(comments: ReviewComment[]): number {
+export function calculateScore(comments: ReviewComment[]): number {
   if (comments.length === 0) return 100;
 
   const weights: Record<string, number> = {
@@ -284,7 +287,7 @@ function calculateScore(comments: ReviewComment[]): number {
   return Math.max(0, 100 - totalDeductions);
 }
 
-function calculateFileScores(comments: ReviewComment[], files: DiffFile[]): FileScore[] {
+export function calculateFileScores(comments: ReviewComment[], files: DiffFile[]): FileScore[] {
   const fileMap = new Map<string, ReviewComment[]>();
 
   for (const file of files) {

@@ -1,26 +1,38 @@
 import { Router, Request, Response } from 'express';
 import { getDb, queryAll, queryOne } from '../db';
+import { SqlParam } from '../db';
+
+function toParam(v: unknown): SqlParam {
+  if (Array.isArray(v)) return v[0] ?? null;
+  if (v === undefined || v === null) return null;
+  if (typeof v === 'object') return JSON.stringify(v);
+  return v as string | number | null;
+}
+
+function toStr(v: unknown): string {
+  return String(toParam(v) ?? '');
+}
 
 const router = Router();
 
 router.get('/', async (req: Request, res: Response) => {
   try {
     const db = await getDb();
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const page = parseInt(toStr(req.query.page)) || 1;
+    const limit = Math.min(parseInt(toStr(req.query.limit)) || 20, 100);
     const offset = (page - 1) * limit;
-    const repoId = req.query.repo_id as string;
-    const search = req.query.search as string;
-    const status = req.query.status as string;
-    const minScore = req.query.min_score as string;
-    const maxScore = req.query.max_score as string;
+    const repoId = toParam(req.query.repo_id);
+    const search = toParam(req.query.search);
+    const status = toParam(req.query.status);
+    const minScore = toParam(req.query.min_score);
+    const maxScore = toParam(req.query.max_score);
 
     let query = `
       SELECT r.*, rp.full_name as repo_name
       FROM reviews r
       LEFT JOIN repos rp ON r.repo_id = rp.id
     `;
-    const params: unknown[] = [];
+    const params: SqlParam[] = [];
     const conditions: string[] = [];
 
     if (repoId) {
@@ -30,7 +42,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (search) {
       conditions.push('(r.pr_title LIKE ? OR r.pr_author LIKE ? OR rp.full_name LIKE ?)');
-      const searchTerm = `%${search}%`;
+      const searchTerm = `%${toStr(search)}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
@@ -41,12 +53,12 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (minScore) {
       conditions.push('r.score >= ?');
-      params.push(parseInt(minScore, 10));
+      params.push(parseInt(toStr(minScore), 10));
     }
 
     if (maxScore) {
       conditions.push('r.score <= ?');
-      params.push(parseInt(maxScore, 10));
+      params.push(parseInt(toStr(maxScore), 10));
     }
 
     if (conditions.length > 0) {
@@ -54,15 +66,16 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     query += ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
 
-    const reviews = queryAll(db, query, params);
+    const countParams: SqlParam[] = [...params];
+    countParams.push(limit, offset);
+    const reviews = queryAll(db, query, countParams);
 
     let countSql = 'SELECT COUNT(*) as total FROM reviews r LEFT JOIN repos rp ON r.repo_id = rp.id';
     if (conditions.length > 0) {
       countSql += ' WHERE ' + conditions.join(' AND ');
     }
-    const countRow = queryOne(db, countSql, params.slice(0, -2)) as any;
+    const countRow = queryOne(db, countSql, params) as { total: number } | undefined;
     const total = countRow?.total ?? 0;
 
     return res.json({
@@ -115,12 +128,15 @@ router.get('/stats/overview', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const db = await getDb();
+    const id = toParam(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid review ID' });
+    
     const review = queryOne(db, `
       SELECT r.*, rp.full_name as repo_name
       FROM reviews r
       LEFT JOIN repos rp ON r.repo_id = rp.id
       WHERE r.id = ?
-    `, [req.params.id]) as any;
+    `, [id]) as any;
 
     if (!review) {
       return res.status(404).json({ error: 'Review not found' });
@@ -128,7 +144,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     const comments = queryAll(db,
       'SELECT * FROM comments WHERE review_id = ? ORDER BY severity DESC, file_path, line_number',
-      [req.params.id]
+      [id]
     );
 
     const fileScores: Record<string, { issues: number; severity: Record<string, number> }> = {};

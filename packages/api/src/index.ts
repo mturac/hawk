@@ -32,29 +32,33 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'Internal server error' });
 });
 
+function shutdown(signal: string, exitCode = 0) {
+  console.log(`Shutting down (${signal})...`);
+  closeDb();
+  process.exit(exitCode);
+}
+
 async function start() {
   await getDb();
   const server = app.listen(PORT, () => {
-    console.log(`🦅 Hawk API running on http://localhost:${PORT}`);
+    console.log(`🦁 Hawk API running on http://localhost:${PORT}`);
   });
 
-  process.on('SIGINT', () => {
-    console.log('Shutting down...');
-    closeDb();
-    server.close();
-    process.exit(0);
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    shutdown('uncaughtException', 1);
   });
-
-  process.on('SIGTERM', () => {
-    closeDb();
-    server.close();
-    process.exit(0);
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled rejection:', reason);
+    shutdown('unhandledRejection', 1);
   });
 }
 
 start().catch((err) => {
   console.error('Failed to start:', err);
-  process.exit(1);
+  shutdown('startup', 1);
 });
 
 export default app;

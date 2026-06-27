@@ -1,4 +1,4 @@
-import { reviewPR, parseDiff, PRContext, ReviewConfig, ReviewResult, loadHawkConfig, buildCustomInstructions, generateLabels, sendNotifications } from '@hawk/core';
+import { reviewPR, parseDiff, PRContext, ReviewConfig, ReviewResult, RepoConfig, LabelConfig, loadHawkConfig, buildCustomInstructions, generateLabels, sendNotifications } from '@hawk/core';
 import { getDb, queryOne, runSql } from '../db';
 import { GitHubService } from './github';
 
@@ -37,11 +37,11 @@ export class ReviewService {
       const rawDiff = await this.github.getPRDiff(request.owner, request.repo, request.prNumber);
       const files = parseDiff(rawDiff);
 
-      const repoRow = queryOne(db, 'SELECT config_json FROM repos WHERE id = ?', [request.repoId]) as any;
-      const repoConfig = repoRow?.config_json ? JSON.parse(repoRow.config_json) : {};
+      const repoRow = queryOne(db, 'SELECT config_json FROM repos WHERE id = ?', [request.repoId]) as Record<string, unknown> | undefined;
+      const repoConfig: RepoConfig = repoRow?.config_json ? JSON.parse(repoRow.config_json as string) : {};
 
       const config: ReviewConfig = {
-        provider: repoConfig.provider || process.env.HAWK_DEFAULT_PROVIDER || 'openai',
+        provider: (repoConfig.provider || process.env.HAWK_DEFAULT_PROVIDER || 'openai') as ReviewConfig['provider'],
         apiKey: this.getApiKey(repoConfig.provider || 'openai'),
         model: repoConfig.model || process.env.HAWK_DEFAULT_MODEL || 'gpt-4o',
         ollamaUrl: repoConfig.ollamaUrl || process.env.HAWK_OLLAMA_URL,
@@ -103,13 +103,19 @@ export class ReviewService {
     }
   }
 
-  private async applyLabels(request: ReviewRequest, result: ReviewResult, repoConfig: any) {
+  private async applyLabels(request: ReviewRequest, result: ReviewResult, repoConfig: RepoConfig) {
     try {
-      const labelConfig = repoConfig.labels || {
+      const defaultLabels: LabelConfig = {
         enabled: true,
         prefix: 'hawk',
         severityLabels: { error: 'hawk:critical', warning: 'hawk:warning', info: 'hawk:info', suggestion: 'hawk:suggestion' },
         categoryLabels: { security: 'hawk:security', bug: 'hawk:bug', style: 'hawk:style', performance: 'hawk:performance', test: 'hawk:test' },
+      };
+      const labelConfig: LabelConfig = {
+        ...defaultLabels,
+        ...repoConfig.labels,
+        severityLabels: { ...defaultLabels.severityLabels, ...repoConfig.labels?.severityLabels },
+        categoryLabels: { ...defaultLabels.categoryLabels, ...repoConfig.labels?.categoryLabels },
       };
 
       if (!labelConfig.enabled) return;
@@ -124,7 +130,7 @@ export class ReviewService {
     }
   }
 
-  private async sendNotifications(request: ReviewRequest, result: ReviewResult, repoConfig: any) {
+  private async sendNotifications(request: ReviewRequest, result: ReviewResult, repoConfig: RepoConfig) {
     try {
       const notifConfig = repoConfig.notifications || {};
       if (!notifConfig.slack?.webhookUrl && !notifConfig.discord?.webhookUrl) return;

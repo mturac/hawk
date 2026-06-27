@@ -123,11 +123,10 @@ export class GitHubService {
       const existing = await existingRes.json() as Array<{ name: string }>;
       const existingNames = new Set(existing.map((l) => l.name));
 
-      for (const label of labels) {
-        if (!existingNames.has(label.name)) {
-          await this.request('POST', `https://api.github.com/repos/${owner}/${repo}/labels`, label);
-        }
-      }
+      const missing = labels.filter((l) => !existingNames.has(l.name));
+      await Promise.all(missing.map((label) =>
+        this.request('POST', `https://api.github.com/repos/${owner}/${repo}/labels`, label)
+      ));
     } catch (error: any) {
       console.error('Failed to ensure labels:', error.message);
     }
