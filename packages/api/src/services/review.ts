@@ -1,4 +1,4 @@
-import { reviewPR, parseDiff, PRContext, ReviewConfig, ReviewResult } from '@hawk/core';
+import { reviewPR, parseDiff, PRContext, ReviewConfig, ReviewResult, loadHawkConfig, buildCustomInstructions, generateLabels, sendNotifications } from '@hawk/core';
 import { getDb, queryOne, runSql } from '../db';
 import { GitHubService } from './github';
 
@@ -92,10 +92,54 @@ export class ReviewService {
         }))
       );
 
+      await this.applyLabels(request, result, repoConfig);
+
+      await this.sendNotifications(request, result, repoConfig);
+
       return result;
     } catch (error) {
       runSql(db, 'UPDATE reviews SET status = ? WHERE id = ?', ['failed', reviewId]);
       throw error;
+    }
+  }
+
+  private async applyLabels(request: ReviewRequest, result: ReviewResult, repoConfig: any) {
+    try {
+      const labelConfig = repoConfig.labels || {
+        enabled: true,
+        prefix: 'hawk',
+        severityLabels: { error: 'hawk:critical', warning: 'hawk:warning', info: 'hawk:info', suggestion: 'hawk:suggestion' },
+        categoryLabels: { security: 'hawk:security', bug: 'hawk:bug', style: 'hawk:style', performance: 'hawk:performance', test: 'hawk:test' },
+      };
+
+      if (!labelConfig.enabled) return;
+
+      const labels = generateLabels(result, labelConfig);
+      if (labels.length === 0) return;
+
+      await this.github.ensureLabelsExist(request.owner, request.repo, labels);
+      await this.github.addLabels(request.owner, request.repo, request.prNumber, labels.map((l) => l.name));
+    } catch (error) {
+      console.error('Failed to apply labels:', error);
+    }
+  }
+
+  private async sendNotifications(request: ReviewRequest, result: ReviewResult, repoConfig: any) {
+    try {
+      const notifConfig = repoConfig.notifications || {};
+      if (!notifConfig.slack?.webhookUrl && !notifConfig.discord?.webhookUrl) return;
+
+      await sendNotifications(result, notifConfig, {
+        title: request.prTitle,
+        score: result.score,
+        issuesFound: result.issuesFound,
+        prUrl: request.prUrl,
+        prTitle: request.prTitle,
+        repo: `${request.owner}/${request.repo}`,
+        summary: result.summary.substring(0, 200),
+      });
+    } catch (error) {
+      console.error('Failed to send notifications:', error);
     }
   }
 

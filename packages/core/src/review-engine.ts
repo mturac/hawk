@@ -1,6 +1,6 @@
 import { truncateDiff } from './diff-parser';
 import { callLLM } from './llm/index';
-import { ReviewConfig, ReviewResult, ReviewComment, PRContext, DiffFile } from './types';
+import { ReviewConfig, ReviewResult, ReviewComment, PRContext, DiffFile, FileScore } from './types';
 
 const SYSTEM_PROMPT = `You are Hawk, an expert code reviewer. You review pull requests like a senior engineer: precise, actionable, and constructive.
 
@@ -80,6 +80,7 @@ export async function reviewPR(
     score: calculateScore(allComments),
     issuesFound: allComments.length,
     prDescription: await generatePRDescription(context, config),
+    fileScores: calculateFileScores(allComments, context.files),
   };
 }
 
@@ -224,6 +225,39 @@ function calculateScore(comments: ReviewComment[]): number {
   );
 
   return Math.max(0, 100 - totalDeductions);
+}
+
+function calculateFileScores(comments: ReviewComment[], files: DiffFile[]): FileScore[] {
+  const fileMap = new Map<string, ReviewComment[]>();
+
+  for (const file of files) {
+    fileMap.set(file.path, []);
+  }
+
+  for (const comment of comments) {
+    const existing = fileMap.get(comment.file) || [];
+    existing.push(comment);
+    fileMap.set(comment.file, existing);
+  }
+
+  const weights: Record<string, number> = {
+    error: 15,
+    warning: 8,
+    info: 3,
+    suggestion: 1,
+  };
+
+  return Array.from(fileMap.entries()).map(([file, fileComments]) => {
+    const severity: Record<string, number> = {};
+    for (const c of fileComments) {
+      severity[c.severity] = (severity[c.severity] || 0) + 1;
+    }
+
+    const deductions = fileComments.reduce((sum, c) => sum + (weights[c.severity] ?? 5), 0);
+    const score = Math.max(0, 100 - deductions);
+
+    return { file, score, issues: fileComments.length, severity };
+  });
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {

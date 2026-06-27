@@ -10,6 +10,10 @@ router.get('/', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const offset = (page - 1) * limit;
     const repoId = req.query.repo_id as string;
+    const search = req.query.search as string;
+    const status = req.query.status as string;
+    const minScore = req.query.min_score as string;
+    const maxScore = req.query.max_score as string;
 
     let query = `
       SELECT r.*, rp.full_name as repo_name
@@ -17,10 +21,36 @@ router.get('/', async (req: Request, res: Response) => {
       LEFT JOIN repos rp ON r.repo_id = rp.id
     `;
     const params: unknown[] = [];
+    const conditions: string[] = [];
 
     if (repoId) {
-      query += ' WHERE r.repo_id = ?';
+      conditions.push('r.repo_id = ?');
       params.push(repoId);
+    }
+
+    if (search) {
+      conditions.push('(r.pr_title LIKE ? OR r.pr_author LIKE ? OR rp.full_name LIKE ?)');
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    if (status) {
+      conditions.push('r.status = ?');
+      params.push(status);
+    }
+
+    if (minScore) {
+      conditions.push('r.score >= ?');
+      params.push(parseInt(minScore, 10));
+    }
+
+    if (maxScore) {
+      conditions.push('r.score <= ?');
+      params.push(parseInt(maxScore, 10));
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
@@ -28,11 +58,11 @@ router.get('/', async (req: Request, res: Response) => {
 
     const reviews = queryAll(db, query, params);
 
-    const countSql = repoId
-      ? 'SELECT COUNT(*) as total FROM reviews WHERE repo_id = ?'
-      : 'SELECT COUNT(*) as total FROM reviews';
-    const countParams = repoId ? [repoId] : [];
-    const countRow = queryOne(db, countSql, countParams) as any;
+    let countSql = 'SELECT COUNT(*) as total FROM reviews r LEFT JOIN repos rp ON r.repo_id = rp.id';
+    if (conditions.length > 0) {
+      countSql += ' WHERE ' + conditions.join(' AND ');
+    }
+    const countRow = queryOne(db, countSql, params.slice(0, -2)) as any;
     const total = countRow?.total ?? 0;
 
     return res.json({
@@ -101,7 +131,17 @@ router.get('/:id', async (req: Request, res: Response) => {
       [req.params.id]
     );
 
-    return res.json({ review, comments });
+    const fileScores: Record<string, { issues: number; severity: Record<string, number> }> = {};
+    for (const comment of comments) {
+      const c = comment as any;
+      if (!fileScores[c.file_path]) {
+        fileScores[c.file_path] = { issues: 0, severity: {} };
+      }
+      fileScores[c.file_path].issues++;
+      fileScores[c.file_path].severity[c.severity] = (fileScores[c.file_path].severity[c.severity] || 0) + 1;
+    }
+
+    return res.json({ review, comments, fileScores });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }

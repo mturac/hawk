@@ -98,4 +98,38 @@ export class GitHubService {
     const expected = `sha256=${hmac.digest('hex')}`;
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   }
+
+  async addLabels(owner: string, repo: string, prNumber: number, labels: string[]) {
+    try {
+      await this.request('POST', `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/labels`, { labels });
+    } catch (error: any) {
+      console.error('Failed to add labels:', error.message);
+    }
+  }
+
+  async removeLabels(owner: string, repo: string, prNumber: number, labels: string[]) {
+    try {
+      for (const label of labels) {
+        await this.request('DELETE', `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/labels/${encodeURIComponent(label)}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to remove labels:', error.message);
+    }
+  }
+
+  async ensureLabelsExist(owner: string, repo: string, labels: Array<{ name: string; color: string; description: string }>) {
+    try {
+      const existingRes = await this.request('GET', `https://api.github.com/repos/${owner}/${repo}/labels?per_page=100`);
+      const existing = await existingRes.json() as Array<{ name: string }>;
+      const existingNames = new Set(existing.map((l) => l.name));
+
+      for (const label of labels) {
+        if (!existingNames.has(label.name)) {
+          await this.request('POST', `https://api.github.com/repos/${owner}/${repo}/labels`, label);
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to ensure labels:', error.message);
+    }
+  }
 }

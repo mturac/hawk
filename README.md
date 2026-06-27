@@ -375,14 +375,14 @@ npm run dev
 
 ### Roadmap
 
+- [x] Custom review rules (`.hawk.yml` config)
+- [x] PR auto-labeling based on review findings
+- [x] Review history search
+- [x] Per-file review score breakdown
+- [x] Slack/Discord notifications
 - [ ] GitHub App (install on org, no manual webhook setup)
 - [ ] GitLab support
 - [ ] Bitbucket support
-- [ ] Custom review rules (YAML config)
-- [ ] PR auto-labeling based on review findings
-- [ ] Slack/Discord notifications
-- [ ] Review history search
-- [ ] Per-file review score breakdown
 
 ---
 

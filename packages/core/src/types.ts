@@ -36,6 +36,14 @@ export interface ReviewResult {
   score: number;
   issuesFound: number;
   prDescription?: string;
+  fileScores?: FileScore[];
+}
+
+export interface FileScore {
+  file: string;
+  score: number;
+  issues: number;
+  severity: Record<string, number>;
 }
 
 export interface ReviewConfig {
