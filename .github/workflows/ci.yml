@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-typecheck-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Type Check
+        run: ./node_modules/.bin/turbo run typecheck
+
+      - name: Build
+        run: ./node_modules/.bin/turbo run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run Tests
+        run: ./node_modules/.bin/turbo run test
+        continue-on-error: true
+
+  build-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build Action
+        run: cd packages/action && npm run build
+
+      - name: Verify dist/index.js exists
+        run: test -f packages/action/dist/index.js

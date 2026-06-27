@@ -2,7 +2,21 @@ import { truncateDiff } from './diff-parser';
 import { callLLM } from './llm/index';
 import { ReviewConfig, ReviewResult, ReviewComment, PRContext, DiffFile, FileScore } from './types';
 
-const SYSTEM_PROMPT = `You are Hawk, an expert code reviewer. You review pull requests like a senior engineer: precise, actionable, and constructive.
+const SYSTEM_PROMPTS: Record<string, string> = {
+  quick: `You are Hawk, a fast code reviewer. Focus ONLY on critical issues:
+1. SECURITY: hardcoded secrets, SQL injection, XSS, path traversal
+2. BUGS: null dereferences, unhandled errors, obvious crashes
+
+Response format (strict JSON array):
+[{"file":"path","line":42,"severity":"error","category":"security|bug","message":"Brief description","suggestion":"Optional fix"}]
+
+Rules:
+- ONLY critical/high-severity issues
+- Skip style, performance, and test suggestions
+- Be extremely concise
+- If no critical issues, return []`,
+
+  standard: `You are Hawk, an expert code reviewer. You review pull requests like a senior engineer: precise, actionable, and constructive.
 
 For each file, analyze:
 1. SECURITY: injection, XSS, SSRF, hardcoded secrets, unsafe deserialization, path traversal
@@ -12,23 +26,39 @@ For each file, analyze:
 5. TESTS: missing test cases, brittle assertions, untested edge cases
 
 Response format (strict JSON array):
-[
-  {
-    "file": "path/to/file.ts",
-    "line": 42,
-    "severity": "error|warning|info|suggestion",
-    "category": "security|bug|style|performance|test|documentation",
-    "message": "Clear description of the issue",
-    "suggestion": "Optional fix suggestion with code"
-  }
-]
+[{"file":"path/to/file.ts","line":42,"severity":"error|warning|info|suggestion","category":"security|bug|style|performance|test|documentation","message":"Clear description of the issue","suggestion":"Optional fix suggestion with code"}]
 
 Rules:
 - Only report REAL issues, not nitpicks
 - Every issue must reference a specific line number
 - If no issues found, return empty array []
 - Be concise: 1-2 sentences per issue
-- Prioritize security and bugs over style`;
+- Prioritize security and bugs over style`,
+
+  thorough: `You are Hawk, a meticulous senior code reviewer. Perform a comprehensive analysis of every file.
+
+For each file, analyze ALL of the following:
+1. SECURITY: injection, XSS, SSRF, hardcoded secrets, unsafe deserialization, path traversal, auth bypass, CORS issues
+2. BUGS: null dereferences, race conditions, off-by-one, type errors, unhandled edge cases, memory leaks, concurrency issues
+3. PERFORMANCE: N+1 queries, unnecessary re-renders, memory leaks, O(n²) loops, missing caching, bundle size
+4. STYLE: naming conventions, code duplication, magic numbers, dead code, inconsistent patterns, missing types
+5. TESTS: missing test cases, brittle assertions, untested edge cases, missing mocks
+6. DOCUMENTATION: missing JSDoc, unclear function names, complex logic without comments
+7. ARCHITECTURE: separation of concerns, dependency direction, coupling issues
+
+Response format (strict JSON array):
+[{"file":"path/to/file.ts","line":42,"severity":"error|warning|info|suggestion","category":"security|bug|style|performance|test|documentation|architecture","message":"Detailed description with context","suggestion":"Complete fix suggestion with code"}]
+
+Rules:
+- Be thorough and detailed
+- Include line-specific suggestions with full code fixes
+- Consider edge cases and long-term maintainability
+- Flag potential issues even if not immediately broken
+- Every issue must reference a specific line number
+- If no issues found, return empty array []`,
+};
+
+const SYSTEM_PROMPT = SYSTEM_PROMPTS.standard;
 
 const SUMMARY_PROMPT = `Based on the review comments above, generate a PR review summary in this format:
 
@@ -96,6 +126,8 @@ async function reviewBatch(
     })
     .join('\n\n');
 
+  const systemPrompt = SYSTEM_PROMPTS[config.reviewMode] || SYSTEM_PROMPT;
+
   const userPrompt = `Review this PR: "${context.title}"
 ${context.description ? `\nPR Description: ${context.description}\n` : ''}
 ${config.customInstructions ? `\nAdditional instructions: ${config.customInstructions}\n` : ''}
@@ -103,7 +135,7 @@ Files to review:
 ${diffs}`;
 
   const messages = [
-    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'system' as const, content: systemPrompt },
     { role: 'user' as const, content: userPrompt },
   ];
 
@@ -203,10 +235,35 @@ function filterFiles(files: DiffFile[], config: ReviewConfig): DiffFile[] {
   return files
     .filter((f) => f.status !== 'deleted')
     .filter((f) => {
+      for (const pattern of config.excludePatterns) {
+        if (matchesGlob(f.path, pattern)) return false;
+      }
+      return true;
+    })
+    .filter((f) => {
       if (config.reviewMode === 'quick' && f.additions + f.deletions > 500) return false;
       return true;
     })
     .slice(0, config.maxFiles);
+}
+
+function matchesGlob(filePath: string, pattern: string): boolean {
+  if (pattern.includes('*')) {
+    const regex = new RegExp(
+      '^' +
+      pattern
+        .replace(/\./g, '\\.')
+        .replace(/\*\*/g, '{{GLOBSTAR}}')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\{\{GLOBSTAR\}\}/g, '.*') +
+      '$'
+    );
+    return regex.test(filePath);
+  }
+  if (pattern.endsWith('/')) {
+    return filePath.startsWith(pattern) || filePath.includes('/' + pattern);
+  }
+  return filePath === pattern || filePath.endsWith('/' + pattern);
 }
 
 function calculateScore(comments: ReviewComment[]): number {

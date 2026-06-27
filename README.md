@@ -164,6 +164,20 @@ jobs:
 
 ## Quick Start
 
+### One-Click Deploy
+
+<p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https://github.com/mturac/hawk">
+    <img src="https://vercel.com/button" alt="Deploy with Vercel" height="32" />
+  </a>
+  <a href="https://railway.app/new/template?template=https://github.com/mturac/hawk">
+    <img src="https://railway.app/button.svg" alt="Deploy on Railway" height="32" />
+  </a>
+  <a href="https://render.com/deploy?repo=https://github.com/mturac/hawk">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" height="32" />
+  </a>
+</p>
+
 ### Option A: GitHub Action Only (CI)
 
 ```yaml

@@ -70,7 +70,7 @@ export class GitHubService {
         path: c.file,
         line: c.line,
         body: c.suggestion
-          ? `${c.message}\n\n**Suggestion:**\n\`\`\`\n${c.suggestion}\n\`\`\``
+          ? `${c.message}\n\n<details><summary>💡 Apply fix</summary>\n\n\`\`\`suggestion\n${c.suggestion}\n\`\`\`\n</details>`
           : c.message,
       }));
 

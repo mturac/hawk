@@ -4,12 +4,49 @@ export interface ILLMProvider {
   chat(messages: LLMMessage[], config: ReviewConfig): Promise<LLMResponse>;
 }
 
+const MAX_RETRIES = 3;
+const TIMEOUT_MS = 120000;
+const INITIAL_DELAY_MS = 1000;
+
 export async function callLLM(
   messages: LLMMessage[],
   config: ReviewConfig
 ): Promise<LLMResponse> {
   const provider = getProvider(config.provider);
-  return provider.chat(messages, config);
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const result = await withTimeout(provider.chat(messages, config), TIMEOUT_MS);
+      return result;
+    } catch (error: any) {
+      const isRetryable =
+        error.message?.includes('429') ||
+        error.message?.includes('500') ||
+        error.message?.includes('502') ||
+        error.message?.includes('503') ||
+        error.message?.includes('timeout') ||
+        error.message?.includes('ECONNRESET');
+
+      if (!isRetryable || attempt === MAX_RETRIES - 1) {
+        throw error;
+      }
+
+      const delay = INITIAL_DELAY_MS * Math.pow(2, attempt);
+      console.log(`LLM call failed (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  throw new Error('LLM call failed after all retries');
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`LLM call timed out after ${ms}ms`)), ms)
+    ),
+  ]);
 }
 
 function getProvider(providerName: string): ILLMProvider {
