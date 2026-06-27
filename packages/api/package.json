@@ -1,0 +1,28 @@
+{
+  "name": "@hawk/api",
+  "version": "1.0.0",
+  "description": "Hawk API server — GitHub webhooks + review engine",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "db:push": "tsx src/db/push.ts"
+  },
+  "dependencies": {
+    "@hawk/core": "*",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "sql.js": "^1.14.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "MIT"
+}

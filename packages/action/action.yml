@@ -1,0 +1,52 @@
+name: 'Hawk — AI Code Reviewer'
+description: 'Free, self-hostable AI code reviewer. Reviews every PR like a senior engineer.'
+branding:
+  icon: 'shield'
+  color: 'orange'
+
+inputs:
+  api-key:
+    description: 'LLM API key (OpenAI, Anthropic, or DeepSeek). Not needed for Ollama.'
+    required: false
+  provider:
+    description: 'LLM provider: openai | anthropic | deepseek | ollama'
+    required: false
+    default: 'openai'
+  model:
+    description: 'Model name (e.g., gpt-4o, claude-sonnet-4-20250514, deepseek-chat, codellama)'
+    required: false
+    default: ''
+  ollama-url:
+    description: 'Ollama server URL'
+    required: false
+    default: 'http://localhost:11434'
+  review-mode:
+    description: 'Review depth: quick | standard | thorough'
+    required: false
+    default: 'standard'
+  max-files:
+    description: 'Maximum number of files to review per PR'
+    required: false
+    default: '50'
+  exclude-patterns:
+    description: 'Glob patterns to exclude (comma-separated)'
+    required: false
+    default: 'package-lock.json,yarn.lock,pnpm-lock.yaml,*.min.js,*.min.css,dist/**,build/**'
+  custom-instructions:
+    description: 'Additional instructions for the reviewer'
+    required: false
+    default: ''
+  github-token:
+    description: 'GitHub token for posting comments'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  review-summary:
+    description: 'Summary of the review findings'
+  issues-found:
+    description: 'Number of issues found'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
