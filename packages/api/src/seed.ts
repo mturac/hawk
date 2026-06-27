@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { getDb, runSql } from './db';
+import { getDb, runSql, closeDb } from './db';
 
 async function seed() {
   const db = await getDb();
@@ -39,7 +39,11 @@ async function seed() {
   }
 
   console.log('Seeded successfully');
+  closeDb();
   process.exit(0);
 }
 
-seed().catch(console.error);
+seed().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

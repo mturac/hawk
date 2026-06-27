@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/your-org/hawk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <a href="https://github.com/your-org/hawk/stargazers"><img src="https://img.shields.io/github/stars/your-org/hawk.svg" alt="Stars"></a>
-  <a href="https://github.com/your-org/hawk/issues"><img src="https://img.shields.io/github/issues/your-org/hawk.svg" alt="Issues"></a>
-  <a href="https://github.com/your-org/hawk/pulls"><img src="https://img.shields.io/github/issues-pr/your-org/hawk.svg" alt="Pull Requests"></a>
-  <a href="https://github.com/your-org/hawk/network/members"><img src="https://img.shields.io/github/forks/your-org/hawk.svg" alt="Forks"></a>
+  <a href="https://github.com/mturac/hawk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/mturac/hawk/stargazers"><img src="https://img.shields.io/github/stars/mturac/hawk.svg" alt="Stars"></a>
+  <a href="https://github.com/mturac/hawk/issues"><img src="https://img.shields.io/github/issues/mturac/hawk.svg" alt="Issues"></a>
+  <a href="https://github.com/mturac/hawk/pulls"><img src="https://img.shields.io/github/issues-pr/mturac/hawk.svg" alt="Pull Requests"></a>
+  <a href="https://github.com/mturac/hawk/network/members"><img src="https://img.shields.io/github/forks/mturac/hawk.svg" alt="Forks"></a>
 </p>
 
 <p align="center">
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-org/hawk@v1
+      - uses: mturac/hawk@v1
         with:
           api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -189,7 +189,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-org/hawk@v1
+      - uses: mturac/hawk@v1
         with:
           api-key: ${{ secrets.OPENAI_API_KEY }}
           # provider: openai | anthropic | deepseek | ollama
@@ -200,7 +200,7 @@ jobs:
 ### Option B: Full Platform (Dashboard + API)
 
 ```bash
-git clone https://github.com/your-org/hawk.git
+git clone https://github.com/mturac/hawk.git
 cd hawk
 cp .env.example .env
 # Edit .env with your API keys
@@ -352,7 +352,7 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull codellama
 
 # Use in GitHub Action
-- uses: your-org/hawk@v1
+- uses: mturac/hawk@v1
   with:
     provider: ollama
     model: codellama
@@ -381,7 +381,7 @@ We love contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ### Development Setup
 
 ```bash
-git clone https://github.com/your-org/hawk.git
+git clone https://github.com/mturac/hawk.git
 cd hawk
 npm install
 npm run dev
@@ -411,7 +411,7 @@ npm run dev
 </p>
 
 <p align="center">
-  <a href="https://github.com/your-org/hawk/stargazers">⭐ Star us on GitHub</a> •
-  <a href="https://github.com/your-org/hawk/issues">🐛 Report a bug</a> •
-  <a href="https://github.com/your-org/hawk/discussions">💬 Discussions</a>
+  <a href="https://github.com/mturac/hawk/stargazers">⭐ Star us on GitHub</a> •
+  <a href="https://github.com/mturac/hawk/issues">🐛 Report a bug</a> •
+  <a href="https://github.com/mturac/hawk/discussions">💬 Discussions</a>
 </p>

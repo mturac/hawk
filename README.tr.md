@@ -14,8 +14,8 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Lisans"></a>
-  <a href="https://github.com/your-org/hawk/stargazers"><img src="https://img.shields.io/github/stars/your-org/hawk.svg" alt="Yıldız"></a>
-  <a href="https://github.com/your-org/hawk/issues"><img src="https://img.shields.io/github/issues/your-org/hawk.svg" alt="Issue"></a>
+  <a href="https://github.com/mturac/hawk/stargazers"><img src="https://img.shields.io/github/stars/mturac/hawk.svg" alt="Yıldız"></a>
+  <a href="https://github.com/mturac/hawk/issues"><img src="https://img.shields.io/github/issues/mturac/hawk.svg" alt="Issue"></a>
 </p>
 
 <p align="center">
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-org/hawk@v1
+      - uses: mturac/hawk@v1
         with:
           api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-org/hawk@v1
+      - uses: mturac/hawk@v1
         with:
           api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -140,7 +140,7 @@ jobs:
 ### Seçenek B: Tam Platform (Dashboard + API)
 
 ```bash
-git clone https://github.com/your-org/hawk.git
+git clone https://github.com/mturac/hawk.git
 cd hawk
 cp .env.example .env
 # .env dosyasını API key'lerinizle düzenleyin
@@ -235,7 +235,7 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull codellama
 
 # GitHub Action'da kullan
-- uses: your-org/hawk@v1
+- uses: mturac/hawk@v1
   with:
     provider: ollama
     model: codellama

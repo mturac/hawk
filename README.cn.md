@@ -14,8 +14,8 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="许可证"></a>
-  <a href="https://github.com/your-org/hawk/stargazers"><img src="https://img.shields.io/github/stars/your-org/hawk.svg" alt="星标"></a>
-  <a href="https://github.com/your-org/hawk/issues"><img src="https://img.shields.io/github/issues/your-org/hawk.svg" alt="问题"></a>
+  <a href="https://github.com/mturac/hawk/stargazers"><img src="https://img.shields.io/github/stars/mturac/hawk.svg" alt="星标"></a>
+  <a href="https://github.com/mturac/hawk/issues"><img src="https://img.shields.io/github/issues/mturac/hawk.svg" alt="问题"></a>
 </p>
 
 <p align="center">
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-org/hawk@v1
+      - uses: mturac/hawk@v1
         with:
           api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-org/hawk@v1
+      - uses: mturac/hawk@v1
         with:
           api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -140,7 +140,7 @@ jobs:
 ### 方案 B：完整平台 (控制台 + API)
 
 ```bash
-git clone https://github.com/your-org/hawk.git
+git clone https://github.com/mturac/hawk.git
 cd hawk
 cp .env.example .env
 # 编辑 .env 填入你的 API 密钥
@@ -233,7 +233,7 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull codellama
 
 # 在 GitHub Action 中使用
-- uses: your-org/hawk@v1
+- uses: mturac/hawk@v1
   with:
     provider: ollama
     model: codellama

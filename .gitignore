@@ -2,10 +2,12 @@ node_modules/
 dist/
 .next/
 *.db
+*.db-shm
+*.db-wal
 *.db-journal
 .env
 .env.local
 .turbo/
 *.log
 .DS_Store
-.env
+*.tsbuildinfo
